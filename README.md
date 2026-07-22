@@ -45,6 +45,7 @@ Key design decision, directly informed by Part 1's findings: **grading is honest
 
 🖥️ App: [`app/risk-ledger-simulator.html`](./app/risk-ledger-simulator.html) — single-file, no dependencies beyond a Google Fonts link, runs in any browser.
 
+Visit site: https://cwhite-cyber.github.io/risk-treatment-audit-and-simulator/
 \---
 
 ## Part 3 — Auditing My Own Tool
