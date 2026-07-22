@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Ledger — Domain 5.2 Field Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14171c;
+    --surface:#1b1f27;
+    --surface-raised:#20242d;
+    --border:#2b303b;
+    --text:#e8e6df;
+    --text-dim:#8b92a3;
+    --text-faint:#5b6272;
+    --avoid:#b0453b;
+    --transfer:#4a6fa5;
+    --mitigate:#4b9e8c;
+    --accept:#c99a3a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at top left, rgba(74,111,165,0.06), transparent 55%),
+      radial-gradient(ellipse at bottom right, rgba(75,158,140,0.05), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding:32px 16px 64px;
+  }
+  .wrap{max-width:760px; margin:0 auto;}
+
+  /* Masthead */
+  .masthead{display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:20px; flex-wrap:wrap; gap:12px;}
+  .masthead h1{
+    font-family:'Special Elite', monospace;
+    font-size:26px; letter-spacing:1px; font-weight:400;
+  }
+  .masthead .sub{font-size:12px; color:var(--text-faint); letter-spacing:1.5px; text-transform:uppercase; margin-top:4px;}
+  .masthead .case-counter{
+    font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--text-dim);
+    text-align:right;
+  }
+
+  /* Tabs */
+  .tabs{display:flex; gap:4px; margin-bottom:28px; flex-wrap:wrap;}
+  .tab{
+    width:100%; max-width:38px; height:6px; border-radius:2px;
+    background:var(--border); flex:1; min-width:14px;
+    transition:background .25s ease;
+  }
+  .tab.current{background:var(--text-dim);}
+  .tab.correct{background:var(--mitigate);}
+  .tab.incorrect{background:var(--avoid);}
+
+  /* Case card */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:28px 26px;
+    position:relative;
+    overflow:hidden;
+  }
+  .case-meta{
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:1px;
+    color:var(--text-faint); text-transform:uppercase; margin-bottom:14px;
+  }
+  .case-meta .domain{color:var(--text-dim);}
+  .card h2{
+    font-family:'Special Elite', monospace; font-weight:400;
+    font-size:21px; line-height:1.35; margin-bottom:16px; color:var(--text);
+  }
+  .scenario-text{font-size:15px; line-height:1.7; color:#c9c7c0; margin-bottom:18px;}
+
+  .figures{
+    display:flex; flex-wrap:wrap; gap:10px 22px;
+    background:var(--surface-raised); border:1px solid var(--border); border-radius:4px;
+    padding:12px 16px; margin-bottom:22px;
+  }
+  .figures .fig{font-family:'IBM Plex Mono', monospace; font-size:12.5px;}
+  .figures .fig .k{color:var(--text-faint); margin-right:6px;}
+  .figures .fig .v{color:var(--text); font-weight:600;}
+
+  .section-label{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:1.5px;
+    text-transform:uppercase; color:var(--text-faint); margin-bottom:10px; display:block;
+  }
+
+  /* Treatment buttons */
+  .treatments{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:22px;}
+  .treat-btn{
+    display:flex; align-items:center; gap:10px;
+    background:var(--surface-raised); border:1px solid var(--border); border-radius:5px;
+    padding:13px 14px; cursor:pointer; text-align:left;
+    color:var(--text); font-family:'IBM Plex Sans', sans-serif; font-size:14px; font-weight:600;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .treat-btn:hover{border-color:var(--text-faint);}
+  .treat-btn .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .treat-btn[data-t="avoid"] .dot{background:var(--avoid);}
+  .treat-btn[data-t="transfer"] .dot{background:var(--transfer);}
+  .treat-btn[data-t="mitigate"] .dot{background:var(--mitigate);}
+  .treat-btn[data-t="accept"] .dot{background:var(--accept);}
+  .treat-btn.selected{background:var(--surface); border-width:2px; padding:12px 13px;}
+  .treat-btn.selected[data-t="avoid"]{border-color:var(--avoid);}
+  .treat-btn.selected[data-t="transfer"]{border-color:var(--transfer);}
+  .treat-btn.selected[data-t="mitigate"]{border-color:var(--mitigate);}
+  .treat-btn.selected[data-t="accept"]{border-color:var(--accept);}
+  .treat-btn:disabled{cursor:default; opacity:0.75;}
+
+  textarea{
+    width:100%; min-height:90px; resize:vertical;
+    background:var(--surface-raised); border:1px solid var(--border); border-radius:5px;
+    color:var(--text); font-family:'IBM Plex Sans', sans-serif; font-size:14px; line-height:1.6;
+    padding:12px 14px; margin-bottom:20px;
+  }
+  textarea:focus{outline:none; border-color:var(--text-faint);}
+  textarea::placeholder{color:var(--text-faint);}
+  textarea:disabled{color:var(--text-dim);}
+
+  .file-btn{
+    width:100%; background:var(--text); color:var(--bg);
+    border:none; border-radius:5px; padding:14px; font-size:14px; font-weight:700;
+    letter-spacing:0.5px; cursor:pointer; font-family:'IBM Plex Sans', sans-serif;
+    transition:opacity .15s ease;
+  }
+  .file-btn:disabled{opacity:0.3; cursor:not-allowed;}
+  .file-btn:not(:disabled):hover{opacity:0.88;}
+
+  /* Verdict */
+  .verdict{margin-top:24px; padding-top:22px; border-top:1px dashed var(--border);}
+  .stamp{
+    display:inline-block; font-family:'Special Elite', monospace;
+    font-size:22px; letter-spacing:3px; padding:8px 18px;
+    border:3px solid; border-radius:3px; transform:rotate(-3deg);
+    margin-bottom:16px; text-transform:uppercase;
+  }
+  .stamp.correct{color:var(--mitigate); border-color:var(--mitigate);}
+  .stamp.incorrect{color:var(--avoid); border-color:var(--avoid);}
+  .verdict-line{font-size:13px; color:var(--text-dim); margin-bottom:14px; font-family:'IBM Plex Mono', monospace;}
+  .verdict-line b{color:var(--text); font-weight:600;}
+
+  .rationale-check{
+    display:flex; align-items:flex-start; gap:10px;
+    background:var(--surface-raised); border:1px solid var(--border); border-radius:5px;
+    padding:12px 14px; margin-bottom:20px;
+  }
+  .rationale-check .rc-badge{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:1px; text-transform:uppercase;
+    padding:3px 8px; border-radius:3px; flex-shrink:0; white-space:nowrap; margin-top:1px;
+  }
+  .rc-badge.coherent{background:rgba(75,158,140,0.15); color:var(--mitigate); border:1px solid var(--mitigate);}
+  .rc-badge.incoherent{background:rgba(176,69,59,0.15); color:var(--avoid); border:1px solid var(--avoid);}
+  .rc-badge.pending{background:rgba(139,146,163,0.12); color:var(--text-dim); border:1px solid var(--border);}
+  .rc-badge.error{background:rgba(201,154,58,0.12); color:var(--accept); border:1px solid var(--accept);}
+  .rationale-check .rc-text{font-size:13px; line-height:1.55; color:#c9c7c0;}
+  .rc-spin{
+    display:inline-block; width:10px; height:10px; border-radius:50%;
+    border:2px solid var(--text-faint); border-top-color:var(--text-dim);
+    animation:spin .7s linear infinite; margin-right:6px; vertical-align:middle;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .explain-label{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px; display:block;}
+  .explain-text{font-size:14.5px; line-height:1.75; color:#c9c7c0; margin-bottom:22px;}
+  .next-btn{
+    background:transparent; color:var(--text); border:1px solid var(--text-dim);
+    border-radius:5px; padding:12px 22px; font-size:13.5px; font-weight:600; cursor:pointer;
+    font-family:'IBM Plex Sans', sans-serif; letter-spacing:0.3px;
+  }
+  .next-btn:hover{border-color:var(--text);}
+
+  /* Dashboard */
+  .dash-header{text-align:center; margin-bottom:30px;}
+  .dash-header .eyebrow{font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:2px; color:var(--text-faint); text-transform:uppercase;}
+  .dash-header h1{font-family:'Special Elite', monospace; font-weight:400; font-size:26px; margin-top:6px;}
+
+  .score-ring{display:flex; justify-content:center; margin-bottom:10px;}
+  .score-ring svg{width:150px; height:150px;}
+  .score-num{font-family:'IBM Plex Mono', monospace; font-size:30px; font-weight:600; fill:var(--text);}
+  .score-lbl{font-family:'IBM Plex Mono', monospace; font-size:10px; fill:var(--text-faint); letter-spacing:1px;}
+  .tier-msg{text-align:center; font-size:14.5px; color:#c9c7c0; max-width:480px; margin:0 auto 34px; line-height:1.6;}
+
+  .cat-block{margin-bottom:18px;}
+  .cat-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px;}
+  .cat-name{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600;}
+  .cat-name .dot{width:9px; height:9px; border-radius:50%;}
+  .cat-frac{font-family:'IBM Plex Mono', monospace; font-size:12.5px; color:var(--text-dim);}
+  .bar-track{height:8px; background:var(--surface-raised); border:1px solid var(--border); border-radius:4px; overflow:hidden;}
+  .bar-fill{height:100%; border-radius:3px 0 0 3px; transition:width .5s ease;}
+
+  .restart-btn{
+    width:100%; margin-top:26px; background:transparent; color:var(--text);
+    border:1px solid var(--border); border-radius:5px; padding:14px;
+    font-size:14px; font-weight:700; cursor:pointer; font-family:'IBM Plex Sans', sans-serif;
+  }
+  .restart-btn:hover{border-color:var(--text-dim);}
+
+  footer{text-align:center; margin-top:30px; font-size:11px; color:var(--text-faint); font-family:'IBM Plex Mono', monospace;}
+
+  @media (max-width:480px){
+    .treatments{grid-template-columns:1fr;}
+    .masthead{flex-direction:column; align-items:flex-start;}
+    .masthead .case-counter{text-align:left;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+const SCENARIOS = [
+  {
+    domain: "Risk Mgmt · Legacy Systems",
+    title: "Case 01 — Abandoned ERP Platform",
+    text: "A manufacturing firm's production scheduling partially runs on an ERP built on Windows Server 2003 R2. The vendor dissolved in 2015; no patches have shipped since. An audit finds the system exposes SMBv1 on a flat production network and cannot be updated without breaking undocumented stored procedures. The ERP now handles 4% of scheduling workload — the rest already migrated to a modern cloud MRP platform. Re-mapping the remaining 4% and decommissioning the legacy server costs $40,000 and takes 6 weeks. Leaving it running costs nothing extra but exposes the entire flat network to WannaCry-class worm propagation.",
+    figures: [["Migration cost","$40,000"],["Timeline","6 weeks"],["Exposure","Network-wide"]],
+    correct: "avoid",
+    explain: "Mitigation isn't viable — you can't patch an abandoned platform, and hardening only lowers likelihood, not the fact that an unsupportable system with undocumented dependencies sits on a flat network. Transfer doesn't apply; there's no vendor or insurer to shift this to. Accept fails the risk-appetite test: the exposure threatens the entire production network for the sake of 4% of a workflow. Avoid — finish the migration and decommission the server — removes the risk source entirely for a cost far below what a worm-class incident would cost the business."
+  },
+  {
+    domain: "Risk Mgmt · Third-Party",
+    title: "Case 02 — Uninsured Payment Processor",
+    text: "An e-commerce company routes credit card processing through a PCI DSS Level 1 certified processor via tokenization; the merchant's own servers never touch raw PAN data. Leadership is still concerned about brand and financial exposure if the processor is breached and tokenized records tied to the merchant leak. The current contract has no indemnification clause, no breach-notification SLA, and does not require the processor to carry cyber liability insurance.",
+    figures: [["PCI status","Level 1 certified"],["Contract gaps","3 (indemnity, SLA, insurance)"]],
+    correct: "transfer",
+    explain: "The merchant already did the technical work — tokenization keeps raw PAN data off its own servers, so there's no meaningful control left to add (ruling out Mitigate). Avoid doesn't fit; the business isn't going to stop taking cards, and switching processors just relocates the same contractual gap. Accept is wrong because leadership has explicitly flagged this as exceeding tolerance. The remaining exposure lives entirely inside the processor's environment, which the merchant can't control directly — the correct lever is contractual: renegotiate for indemnification, a breach-notification SLA, and required cyber liability insurance, shifting the financial and reputational consequence to the party that actually holds the data."
+  },
+  {
+    domain: "Risk Mgmt · Endpoint Security",
+    title: "Case 03 — Unencrypted Field Laptop Fleet",
+    text: "A home health-care company issues 400 laptops to field nurses who access patient records remotely. An audit finds none of the laptops have full-disk encryption, and 12 have been lost or stolen in the past two years with no reported breach — likely luck rather than absence of risk. Deploying full-disk encryption across the fleet costs $22,000 and takes 3 weeks.",
+    figures: [["SLE (per device)","$180,000"],["ARO","6"],["ALE","$1,080,000"],["Control cost","$22,000"]],
+    correct: "mitigate",
+    explain: "ALE without treatment (SLE × ARO) runs to roughly $1.08M/year, dwarfing the $22,000 control cost — a clear case for mitigation. This isn't Avoid (the business needs mobile access to function), Transfer (no insurer removes the HIPAA breach-notification burden or reputational harm), or Accept (the exposure sits well above appetite given the ALE). Full-disk encryption directly reduces impact — a lost device with encryption at rest generally isn't a reportable breach under HIPAA safe-harbor provisions — making this a textbook Mitigate."
+  },
+  {
+    domain: "Risk Mgmt · Internal Systems",
+    title: "Case 04 — Cosmetic Dashboard Bug",
+    text: "A QA engineer flags that an internal, non-customer-facing analytics dashboard mislabels a chart axis when the browser window is resized below 800px — a configuration no employee uses (asset records show 100% of staff run 1440p+ monitors). The dashboard displays only aggregated, already-public marketing metrics. Fixing the responsive CSS is estimated at 20 developer hours (~$3,000); the risk register already logs dozens of similarly minor UI quirks.",
+    figures: [["Fix cost","~$3,000 (20 hrs)"],["Data sensitivity","Public, aggregated"],["Trigger condition","0% of fleet"]],
+    correct: "accept",
+    explain: "Likelihood is effectively zero — no device in the fleet can trigger the condition — and impact is negligible, since the data shown is internal-only and already public. ALE rounds to near $0, well under the $3,000 fix cost, so spending engineering time here fails a basic cost-benefit test and pulls resources from higher-ALE risk elsewhere. This is a textbook Accept: formally log it, don't action it, and revisit only if the underlying assumption (screen size) changes."
+  },
+  {
+    domain: "Risk Mgmt · Human Element",
+    title: "Case 05 — Phishing-Susceptible Workforce",
+    text: "A mid-size firm's latest phishing simulation shows a 34% click-through rate firm-wide, and the finance team was successfully phished twice in the last year, resulting in two fraudulent wire transfers totaling $95,000. No security awareness training program currently exists. A quarterly training program plus mandatory MFA on financial systems costs $18,000/year and is projected to cut successful phishing incidents by roughly 80%.",
+    figures: [["ARO","2/yr"],["SLE","~$47,500"],["ALE","~$95,000"],["Control cost","$18,000/yr"]],
+    correct: "mitigate",
+    explain: "The human element is the actual attack surface here, and it's a controllable one — training and MFA reduce both likelihood (fewer successful clicks) and impact (MFA blocks account takeover even after a credential is phished). Against a roughly $95,000 ALE, an $18,000 control projected to cut incidents ~80% pays for itself well inside year one. Avoid isn't realistic (the firm can't stop using email or wire transfers); Transfer and Accept both leave the actual exposure — human error — completely unaddressed."
+  },
+  {
+    domain: "Risk Mgmt · Facilities",
+    title: "Case 06 — Data Center in a Flood Zone",
+    text: "A company's primary data center sits in a 100-year floodplain. Regional flood modeling puts the ARO at roughly 0.03 (about a 1-in-30-year chance under the current climate outlook), with an SLE of $4.2M if the facility floods. Relocating the data center entirely would cost $6.8M and take 18 months. Flood and business-interruption insurance covering the facility is available for $85,000/year.",
+    figures: [["ARO","0.03"],["SLE","$4,200,000"],["ALE","~$126,000"],["Insurance","$85,000/yr"]],
+    correct: "transfer",
+    explain: "Avoid (relocation) costs more than the ALE could justify and takes far longer than most flood-recovery timelines — a poor trade even against a $4.2M SLE. Mitigation (barriers, elevated equipment) can reduce but not eliminate a risk baked into the site's location, and doesn't address business-interruption losses on its own. At $85,000/year against an ALE of roughly $126,000, insurance is priced sensibly and shifts the financial consequence to a party built to absorb it — the standard Transfer play for low-frequency, high-severity structural risk."
+  },
+  {
+    domain: "Risk Mgmt · Data Governance",
+    title: "Case 07 — PII in a Public-Facing Feature",
+    text: "A product team proposes a new feature that would store customer PII (names, addresses, purchase history) in a public, unauthenticated S3 bucket to simplify a partner integration, bypassing the existing access-controlled data layer. Legal flags this as a likely violation of the company's data-processing agreements with EU customers under GDPR. Building the feature with proper access controls instead adds 5 weeks and $60,000 to the budget.",
+    figures: [["Proper build cost","+$60,000, +5 wks"],["Regulatory exposure","GDPR — up to 4% global revenue"]],
+    correct: "avoid",
+    explain: "This is a risk that hasn't been created yet — the cleanest point to apply Avoid. There's no acceptable mitigation for \"PII in a public bucket\" (any control still leaves the fundamentally unsound architecture in place), no one to transfer regulatory liability for a GDPR violation to, and the potential impact is nowhere near acceptable to tolerate. The correct move is to reject the shortcut architecture and require the feature be built through the existing access-controlled data layer — removing the risk before it exists."
+  },
+  {
+    domain: "Risk Mgmt · Facilities",
+    title: "Case 08 — Seismic Retrofit for a Low-Risk Region",
+    text: "A regional office building sits in an area with historically low seismic activity (last significant event: magnitude 3.1, over 40 years ago). A consultant recommends a full structural seismic retrofit costing $2.1M. Regional geological data puts ARO for a damaging quake at roughly 0.004 (a 1-in-250-year event), with an SLE of $3.4M for a full building loss.",
+    figures: [["ARO","0.004"],["SLE","$3,400,000"],["ALE","~$13,600"],["Retrofit cost","$2,100,000"]],
+    correct: "accept",
+    explain: "ALE here is roughly $13,600/year — a $2.1M control is wildly disproportionate to a five-figure annual exposure, and would take over 150 years to \"pay for itself\" against the risk it addresses. This doesn't mean ignoring seismic risk entirely (standard building codes and existing property insurance already apply), but a discretionary $2.1M retrofit specifically fails cost-benefit analysis. Formally documenting and accepting the residual risk, while relying on code compliance and existing coverage, is the appropriate treatment."
+  },
+  {
+    domain: "Risk Mgmt · Application Security",
+    title: "Case 09 — SQL Injection in a Production Web App",
+    text: "A penetration test finds a SQL injection vulnerability in a customer-facing web application's login form, allowing an attacker to bypass authentication and query the customer database directly. The flaw is fully exploitable and was demonstrated live during the test. Estimated ALE if exploited before disclosure: $2.3M. Patching the vulnerable query and deploying a WAF rule costs $9,000 and can be done within 48 hours.",
+    figures: [["ALE if exploited","$2,300,000"],["Fix cost","$9,000"],["Time to fix","48 hours"]],
+    correct: "mitigate",
+    explain: "This is an actively exploitable, high-severity vulnerability with a direct, low-cost technical fix available — about as clear a Mitigate case as they come. Avoid would mean taking the application offline, which isn't proportionate when a 48-hour patch exists. Transfer (cyber insurance) doesn't stop the breach from happening, it only offsets some cost after the fact — inappropriate as a primary response to a known, exploitable flaw. Accept is disqualified outright given the ALE. Patch the query with parameterized statements and add the WAF rule as defense-in-depth."
+  },
+  {
+    domain: "Risk Mgmt · Residual Risk",
+    title: "Case 10 — Residual Ransomware Risk After Mitigation",
+    text: "A company has already implemented offline immutable backups, EDR, and network segmentation in response to a rise in ransomware attacks in its industry. Despite these controls, the security team estimates a residual ARO of 0.15/year for a successful incident, with an SLE of $850,000 even with backups in place, since backups don't address exfiltration-based extortion. A cyber insurance policy covering ransomware response and extortion is available for $45,000/year.",
+    figures: [["Residual ARO","0.15"],["SLE","$850,000"],["Residual ALE","~$127,500"],["Insurance","$45,000/yr"]],
+    correct: "transfer",
+    explain: "The technical controls already in place are appropriate Mitigate responses and should stay — this scenario asks what to do about the risk that remains after mitigation, not instead of it. Residual ALE is roughly $127,500/year; a $45,000 policy covering response costs and extortion-related losses is a reasonable price to shift that remaining exposure, particularly the exfiltration/double-extortion component that technical controls alone can't fully close. Mitigate and Transfer aren't mutually exclusive — a mature risk posture often layers both."
+  },
+  {
+    domain: "Risk Mgmt · Product Safety",
+    title: "Case 11 — Unpatchable IoT Medical Device Line",
+    text: "A healthcare device manufacturer's Bluetooth-enabled patient monitor line has a firmware vulnerability allowing unauthenticated command injection over BLE within a 30-foot range. The chipset vendor confirms the firmware cannot be patched due to hardware memory constraints, and the product line is scheduled for replacement in 8 months. 14,000 units are currently deployed in hospitals. Recalling and replacing all units early costs $6.2M.",
+    figures: [["Units deployed","14,000"],["Attack range","~30 ft"],["Early recall cost","$6,200,000"]],
+    correct: "avoid",
+    explain: "With no patch path available and 14,000 units in active clinical use, this isn't a risk that can be reduced through configuration — the flaw is baked into hardware. Transfer and Accept both fail immediately given the patient-safety impact: command injection on a patient monitor is a life-safety issue, not a purely financial one. The correct treatment is an accelerated recall/replacement rather than waiting for the scheduled 8-month redesign — removing the vulnerable devices from clinical environments is the only way to eliminate a risk that can't be mitigated in place."
+  },
+  {
+    domain: "Risk Mgmt · Identity & Access",
+    title: "Case 12 — Weak Password Policy Across the Domain",
+    text: "An internal audit of Active Directory finds the domain password policy allows 6-character passwords with no complexity requirement and no account lockout threshold. A subsequent password-spraying test against a sample of accounts succeeds against 22% of accounts within an hour, using only the top 100 common passwords. No MFA is deployed on any internal system.",
+    figures: [["Spray success rate","22%"],["Time to compromise","< 1 hour"],["MFA coverage","0%"]],
+    correct: "mitigate",
+    explain: "This is a foundational, correctable configuration gap with a well-understood fix: enforce a stronger complexity/length policy, add account lockout or throttling, and deploy MFA — standard, low-cost identity controls. There's no case for Avoid (the domain has to authenticate users somehow), Transfer (no third party absorbs the operational risk of compromised internal accounts), or Accept (a 22% success rate against a trivial attack sits far outside any reasonable risk appetite). Tightening GPO-enforced policy and layering MFA directly reduces both likelihood and impact."
+  },
+  {
+    domain: "Risk Mgmt · Business Continuity",
+    title: "Case 13 — HA Cluster for a Low-Priority Tool",
+    text: "An internal expense-reporting tool runs on a single server with no failover. The business has formally set its RTO for this system at 2 weeks (manual workarounds exist) and its RPO at 24 hours. The current setup already meets both targets comfortably via nightly backups and a documented 3-day manual rebuild process. A fully redundant HA cluster would cost $140,000/year but would only improve recovery time from 3 days to under 1 hour.",
+    figures: [["Business RTO","2 weeks"],["Business RPO","24 hours"],["Current recovery","3 days"],["HA cluster cost","$140,000/yr"]],
+    correct: "accept",
+    explain: "This is a case where the current posture already satisfies the business's own stated recovery requirements — the RTO/RPO targets aren't being missed, they're being beaten. Spending $140,000/year to improve a metric already comfortably within tolerance doesn't reduce any risk the business hasn't already decided it can live with. Mitigate isn't wrong in principle, it's just unjustified here on cost-benefit grounds relative to the already-defined risk appetite; Accept — formally documenting that the current setup meets RTO/RPO — is correct unless the business itself tightens its recovery requirements."
+  },
+  {
+    domain: "Risk Mgmt · Third-Party",
+    title: "Case 14 — Cloud Backup Vendor SLA Gap",
+    text: "A company relies on a third-party cloud backup provider as its last line of defense against ransomware and data loss. The vendor's contract includes an uptime SLA but no financial penalty if a restore fails or data is unrecoverable, and no requirement that the vendor carry errors-and-omissions insurance covering data-loss liability. A recent audit already rates the company's own encryption and access controls around the backup pipeline as adequate.",
+    figures: [["Own controls","Rated adequate"],["Contract gap","No restore-failure penalty, no E&O requirement"]],
+    correct: "transfer",
+    explain: "The technical relationship with the vendor — encryption, access controls — is already sound, so the gap here is entirely contractual: if the vendor's restore fails when it matters most, the company currently has no financial recourse. This mirrors the payment-processor pattern: a competent, audited technical setup sitting on an incomplete risk-transfer agreement. Renegotiating the contract to add restore-failure penalties and require the vendor carry E&O insurance shifts the financial consequence of a vendor-side failure to the party actually responsible for it."
+  },
+  {
+    domain: "Risk Mgmt · Legacy Systems",
+    title: "Case 15 — Deprecated SMBv1 File Share Migration",
+    text: "An organization still runs SMBv1 on its primary internal file-sharing infrastructure, serving all departments across a flat corporate network. SMBv1 has multiple unpatched, wormable vulnerabilities — the same class exploited by WannaCry and NotPetya — and Microsoft deprecated it years ago. A handful of legacy line-of-business applications still depend on it, but a compatibility audit confirms all of them can be migrated to SMBv3 or replaced with modern equivalents. Full migration and decommissioning is scoped at 10 weeks and $75,000.",
+    figures: [["Migration cost","$75,000"],["Timeline","10 weeks"],["Confirmed migration path","Yes, all dependencies"]],
+    correct: "avoid",
+    explain: "Unlike the earlier ERP case, every dependency here has a confirmed migration path — there's no undocumented blocker forcing a compensating-control approach. Because a full, funded path exists to remove SMBv1 from the environment entirely, the fact that a wormable, unpatched protocol sits on the flat network makes partial mitigation (segmentation alone) an unnecessary half-measure. Migrate the remaining line-of-business apps and disable SMBv1 network-wide — eliminating the protocol removes the risk source rather than fencing it in."
+  }
+];
+
+const TREATMENTS = [
+  {key:"avoid", label:"Avoid", desc:"Remove the risk source entirely"},
+  {key:"transfer", label:"Transfer", desc:"Shift the consequence to a third party"},
+  {key:"mitigate", label:"Mitigate", desc:"Apply controls to reduce likelihood/impact"},
+  {key:"accept", label:"Accept", desc:"Formally document and tolerate it"}
+];
+
+const ICONS = {
+  avoid: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="6" y1="18" x2="18" y2="6"/></svg>',
+  transfer: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h13M13 4l4 4-4 4M20 16H7M11 12l-4 4 4 4"/></svg>',
+  mitigate: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>',
+  accept: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15l4-8 4 8M5.5 12h5M14 6h6M14 10h6M14 14h4"/></svg>'
+};
+
+let state = {
+  index: 0,
+  answers: Array(SCENARIOS.length).fill(null), // {selected, rationale, correct, rationaleCheck}
+  selectedTreatment: null,
+  submitted: false,
+  rationale: "",
+  finished: false,
+  grading: false
+};
+
+function selectTreatment(key){
+  if(state.submitted) return;
+  state.selectedTreatment = key;
+  render();
+}
+
+async function fileVerdict(){
+  const sc = SCENARIOS[state.index];
+  const correct = state.selectedTreatment === sc.correct;
+  state.answers[state.index] = {
+    selected: state.selectedTreatment,
+    rationale: state.rationale,
+    correct: correct,
+    rationaleCheck: null // null = pending/skipped, {coherent, feedback} = graded, {error:true} = failed
+  };
+  state.submitted = true;
+  render();
+
+  const trimmed = state.rationale.trim();
+  if(!trimmed){
+    state.answers[state.index].rationaleCheck = {skipped:true};
+    render();
+    return;
+  }
+
+  state.grading = true;
+  render();
+  try{
+    const result = await gradeRationale(sc, state.selectedTreatment, trimmed);
+    state.answers[state.index].rationaleCheck = result;
+  }catch(e){
+    state.answers[state.index].rationaleCheck = {error:true};
+  }
+  state.grading = false;
+  render();
+}
+
+async function gradeRationale(sc, selected, rationale){
+  const prompt = `You are auditing a CompTIA Security+ risk-treatment exam answer. Evaluate whether the student's written rationale logically supports the treatment they SELECTED — do not evaluate whether the selected treatment itself is the standard/correct answer, that is checked separately.
+
+Scenario: ${sc.text}
+
+Student selected treatment: ${selected.toUpperCase()}
+Student's rationale: "${rationale}"
+
+Check BOTH of the following. The rationale only counts as coherent if it passes both:
+1. STRUCTURE — does the argument's logic actually lead to ${selected.toUpperCase()} specifically, rather than describing a different treatment, generic filler, or an internally inconsistent argument?
+2. GROUNDING — if the rationale cites any numbers (SLE, ARO, ALE, dollar costs, timeframes, percentages, etc.), do those numbers match figures actually stated in the scenario text above? A structurally valid argument built on a fabricated or contradicting number is NOT coherent — flag it as incoherent and say which figure doesn't match. If the rationale cites no numbers, grounding passes by default.
+
+Respond with ONLY a raw JSON object, no markdown fences, no preamble, in exactly this shape:
+{"coherent": true or false, "feedback": "one concise sentence (max 25 words) explaining your judgment, naming the mismatched figure if grounding failed"}`;
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+
+  const data = await response.json();
+  const textBlock = (data.content || []).find(b => b.type === "text");
+  if(!textBlock) throw new Error("No text response");
+  const cleaned = textBlock.text.replace(/```json|```/g, "").trim();
+  const parsed = JSON.parse(cleaned);
+  if(typeof parsed.coherent !== "boolean" || typeof parsed.feedback !== "string"){
+    throw new Error("Malformed grading response");
+  }
+  return parsed;
+}
+
+function nextCase(){
+  if(state.index < SCENARIOS.length - 1){
+    state.index += 1;
+    state.selectedTreatment = null;
+    state.submitted = false;
+    state.rationale = "";
+    render();
+  } else {
+    state.finished = true;
+    render();
+  }
+}
+
+function restart(){
+  state = {
+    index: 0,
+    answers: Array(SCENARIOS.length).fill(null),
+    selectedTreatment: null,
+    submitted: false,
+    rationale: "",
+    finished: false
+  };
+  render();
+}
+
+function updateRationale(v){
+  state.rationale = v;
+}
+
+function tierMessage(pct){
+  if(pct >= 90) return "Field-ready. Your reasoning holds up even when the numbers get adversarial.";
+  if(pct >= 70) return "Solid instincts — a few edge cases are still slipping through. Review the missed treatments below.";
+  return "The foundations are there. Revisit the missed cases before moving on — pay attention to which numbers drove each verdict.";
+}
+
+function renderDashboard(){
+  const app = document.getElementById('app');
+  const totalCorrect = state.answers.filter(a => a && a.correct).length;
+  const pct = Math.round((totalCorrect / SCENARIOS.length) * 100);
+  const r = 62, circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - pct/100);
+
+  const catStats = {};
+  TREATMENTS.forEach(t => catStats[t.key] = {correct:0, total:0});
+  SCENARIOS.forEach((sc, i) => {
+    catStats[sc.correct].total += 1;
+    if(state.answers[i] && state.answers[i].correct) catStats[sc.correct].correct += 1;
+  });
+
+  app.innerHTML = `
+    <div class="dash-header">
+      <div class="eyebrow">Risk Ledger — Final Audit</div>
+      <h1>Domain 5.2 Field Simulation</h1>
+    </div>
+    <div class="score-ring">
+      <svg viewBox="0 0 150 150">
+        <circle cx="75" cy="75" r="${r}" fill="none" stroke="var(--border)" stroke-width="10"/>
+        <circle cx="75" cy="75" r="${r}" fill="none" stroke="${pct>=90?'var(--mitigate)':pct>=70?'var(--accept)':'var(--avoid)'}"
+          stroke-width="10" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"
+          transform="rotate(-90 75 75)"/>
+        <text x="75" y="72" text-anchor="middle" class="score-num">${pct}%</text>
+        <text x="75" y="92" text-anchor="middle" class="score-lbl">${totalCorrect}/${SCENARIOS.length} CORRECT</text>
+      </svg>
+    </div>
+    <p class="tier-msg">${tierMessage(pct)}</p>
+
+    ${(() => {
+      const graded = state.answers.filter(a => a && a.rationaleCheck && typeof a.rationaleCheck.coherent === 'boolean');
+      if(!graded.length) return '';
+      const coherentCount = graded.filter(a => a.rationaleCheck.coherent).length;
+      return `<p class="tier-msg" style="margin-top:-22px; font-size:12.5px; color:var(--text-faint);">Rationale audit: ${coherentCount}/${graded.length} of your written justifications actually supported the treatment you selected.</p>`;
+    })()}
+
+    <span class="section-label">Score by treatment category</span>
+    ${TREATMENTS.map(t => {
+      const s = catStats[t.key];
+      const p = s.total ? (s.correct/s.total*100) : 0;
+      return `
+      <div class="cat-block">
+        <div class="cat-top">
+          <div class="cat-name"><span class="dot" style="background:var(--${t.key})"></span>${t.label}</div>
+          <div class="cat-frac">${s.correct}/${s.total} · ${Math.round(p)}%</div>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:${p}%; background:var(--${t.key})"></div></div>
+      </div>`;
+    }).join('')}
+
+    <button class="restart-btn" onclick="restart()">Reopen the case file — restart simulation</button>
+    <footer>15 CASES · SY0-701 DOMAIN 5.2 · RUN LIVES ONLY IN THIS BROWSER TAB</footer>
+  `;
+}
+
+function render(){
+  if(state.finished){ renderDashboard(); return; }
+
+  const app = document.getElementById('app');
+  const sc = SCENARIOS[state.index];
+  const ans = state.answers[state.index];
+
+  const tabsHtml = SCENARIOS.map((_, i) => {
+    let cls = 'tab';
+    if(i === state.index) cls += ' current';
+    else if(state.answers[i]) cls += state.answers[i].correct ? ' correct' : ' incorrect';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+
+  const treatBtns = TREATMENTS.map(t => {
+    const isSel = state.selectedTreatment === t.key;
+    return `
+      <button class="treat-btn${isSel?' selected':''}" data-t="${t.key}"
+        onclick="selectTreatment('${t.key}')" ${state.submitted?'disabled':''}>
+        <span class="dot"></span>
+        <span>${t.label}</span>
+      </button>`;
+  }).join('');
+
+  const figuresHtml = sc.figures && sc.figures.length ? `
+    <div class="figures">
+      ${sc.figures.map(f => `<div class="fig"><span class="k">${f[0]}</span><span class="v">${f[1]}</span></div>`).join('')}
+    </div>` : '';
+
+  let verdictHtml = '';
+  if(state.submitted){
+    const correct = ans.correct;
+
+    let rcHtml = '';
+    const rc = ans.rationaleCheck;
+    if(rc && rc.skipped){
+      rcHtml = `<div class="rationale-check"><span class="rc-badge pending">No rationale</span><span class="rc-text">You didn't write a rationale for this one — nothing to audit.</span></div>`;
+    } else if(state.grading && !rc){
+      rcHtml = `<div class="rationale-check"><span class="rc-badge pending"><span class="rc-spin"></span>Auditing</span><span class="rc-text">Checking whether your rationale actually supports "${cap(ans.selected)}"...</span></div>`;
+    } else if(rc && rc.error){
+      rcHtml = `<div class="rationale-check"><span class="rc-badge error">Unavailable</span><span class="rc-text">Rationale audit couldn't run (network/API issue). Your treatment verdict above is unaffected.</span></div>`;
+    } else if(rc && typeof rc.coherent === 'boolean'){
+      rcHtml = `<div class="rationale-check">
+        <span class="rc-badge ${rc.coherent?'coherent':'incoherent'}">${rc.coherent?'Rationale coherent':'Rationale mismatch'}</span>
+        <span class="rc-text">${rc.feedback}</span>
+      </div>`;
+    }
+
+    verdictHtml = `
+      <div class="verdict">
+        <div class="stamp ${correct?'correct':'incorrect'}">${correct?'Correct':'Not Quite'}</div>
+        ${!correct ? `<div class="verdict-line">Your selection: <b>${cap(ans.selected)}</b> &nbsp;·&nbsp; Standard treatment: <b>${cap(sc.correct)}</b></div>` : ''}
+        ${rcHtml}
+        <span class="explain-label">Why this is the correct treatment</span>
+        <p class="explain-text">${sc.explain}</p>
+        <button class="next-btn" onclick="nextCase()">${state.index < SCENARIOS.length-1 ? 'Next case →' : 'View final audit →'}</button>
+      </div>`;
+  }
+
+  app.innerHTML = `
+    <div class="masthead">
+      <div>
+        <h1>Risk Ledger</h1>
+        <div class="sub">SY0-701 · Domain 5.2 Field Simulation</div>
+      </div>
+      <div class="case-counter">CASE ${state.index+1} / ${SCENARIOS.length}</div>
+    </div>
+    <div class="tabs">${tabsHtml}</div>
+    <div class="card">
+      <div class="case-meta"><span class="domain">${sc.domain}</span><span>Treatment required</span></div>
+      <h2>${sc.title.replace(/^Case \d+ — /, '')}</h2>
+      <p class="scenario-text">${sc.text}</p>
+      ${figuresHtml}
+      <span class="section-label">Select treatment</span>
+      <div class="treatments">${treatBtns}</div>
+      <span class="section-label">Rationale</span>
+      <textarea placeholder="Document your reasoning for the case file..." oninput="updateRationale(this.value)"
+        ${state.submitted?'disabled':''}>${state.rationale}</textarea>
+      <button class="file-btn" onclick="fileVerdict()" ${(!state.selectedTreatment || state.submitted)?'disabled':''}>
+        ${state.submitted ? 'Verdict filed' : 'File verdict'}
+      </button>
+      ${verdictHtml}
+    </div>
+    <footer>CASE ${state.index+1} OF ${SCENARIOS.length} · NOTHING IS SAVED TO A SERVER</footer>
+  `;
+
+  // re-attach dot icons (avoid re-render flicker by injecting icon svg directly)
+  document.querySelectorAll('.treat-btn').forEach(btn=>{
+    const key = btn.getAttribute('data-t');
+    const dotEl = btn.querySelector('.dot');
+    // keep plain color dot; icon omitted from render for simplicity/performance
+  });
+}
+
+function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+
+render();
+</script>
+</body>
+</html>
